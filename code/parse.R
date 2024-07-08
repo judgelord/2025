@@ -84,7 +84,7 @@ d %<>% mutate(racialized_term_count = str_ext_all(text, terms) %>% lengths(),
               racialized_terms = str_ext_all(text, terms) %>% paste(sep = ";") #FIXME
               )
 
-# take a look #FIXME radicalized_terms is not collapsing
+# take a look #FIXME racialized_terms is not collapsing
 d %>% filter(racialized_term_count > 1) %>%
   select(section, racialized_terms, text) %>%
   kablebox()
