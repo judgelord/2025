@@ -1,0 +1,112 @@
+source("code/setup.r")
+
+# from google sheet via "get_keywords.R
+racialized_terms <- read_csv(here("data", "racialized_terms.csv"))
+
+# read project 2025
+text <- here::here("data", "body.txt") %>%
+readLines()
+
+d <- tibble(text = text)
+
+d %<>% mutate(text = str_squish(text)) %>%
+           filter(nchar(text)>2)
+
+# save a smaller file
+save(d, file = here("data", "body.rda"))
+
+# load rda
+load(here("data", "body.rda"))
+
+head(d)
+
+
+# identify departments and acronyms to help consolidate (TODO)
+departments <- d$text %>% str_extract("DEPARTMENT OF.*") %>% unique()
+departments
+
+acronyms <- d$text %>% str_extract("\\([A-Z|-]*\\)") %>% unique() %>% na.omit() %>% as.character()
+acronyms
+
+# look at headers potentially related to agencies
+d$text %>% str_extract("AGENCY.*") %>% unique()
+
+d$text %>% str_extract("[A-Z]* AND BUDGET") %>% unique()
+
+d$text %>% str_extract("OFFICE OF MANAGEMENT.*") %>% unique()
+
+d$text %>% str_extract("PRO .*") %>% unique()
+
+d$text %>% str_extract("PUBLIC.*") %>% unique()
+
+d$text %>% str_extract("ANTI.*") %>% unique()
+
+d$text %>% str_extract("PPO.*") %>% unique()
+
+d$text %>% str_extract(".*HAVA.*") %>% unique()
+
+# CLEAN UP TEXT
+# remove strings that look like section headers but are not
+  # or sub-headers where there is an agency above
+  remove <-   "PUTTING AMERICAN WORKERS|RESTORING THE|’S INTEGRITY| OFFICE OF OPERATIONS COORDINATION|CLAIMS VS|AMERICAN INDIANS AND|REGARDING ALASKA|BETTER CAPITAL MARKETS|ENTREPRENEURIAL CAPITAL FORMATION|AND RELATED AGENCIES|ENTREPRENEURIAL CAPITAL FORMATION|DIGITAL ASSETS| ADMINISTRATION AND IMPROVED COMMODITIES AND DERIVATIVES MARKETS|IMPROVED REGULATION OF THE INDUSTRY AND SROS|OTHER ACTIONS|FIRST|LONGER|OFFICE OF THE SECRETARY|OFFICE OF STRATEGY, POLICY, AND PLANS|MANAGEMENT DIRECTORATE|PLCY|FOREIGN INTELLIGENCE SURVEILLANCE ACT|PREVENTING THE ABUSE OF INTELLIGENCE FOR PARTISAN PURPOSES| ORGANIZATIONAL|COVERT ACTION| REQUIRES|OTHER STRUCTURAL REFORMS THAT THE |PROGRAM AND OFFICE PRIORITIZATION WITHIN THE DEPARTMENT|ADDITIONAL|NEW REGULATIONS|STATEMENT FOR A REFORMED |AMERICAN ENERGY AND SCIENCE DOMINANCE| AND RELATED COMS|^NEW|AGENCY POLICIES THAT DON’T REQUIRE NEW LEGISLATION OR REGULATIONS TO ENACT|POLICIES/REGULATIONS THAT REQUIRE COORDINATION WITH OTHER AGENCIES AND/OR THE WHITE HOUSE|THAT THE PRESIDENT SHOULD ISSUE|NEW REGULATIONS|ADMINISTRATOR’S OFFICE AND REORGANIZATION RESPONSIBILITY|COVID|EMERGENCY PREPAREDNESS|AFFORDABLE CARE ACT AND PRIVATE HEALTH INSURANCE|LEGISLATIVE PROPOSALS|LIFE, CONSCIENCE, AND BODILY INTEGRITY| REFORM PILLARS|FIRST|LONGER|BUDGET STRUCTURE|RESTORING AMERICAN ENERGY DOMINANCE|ADMINISTRATION PRIORITIES|ONSHORE|IMMEDIATE ACTIONS|PURSUING A NATIONAL SECURITY AGENDA AIMED AT EXTERNAL STATE AND NON|DISMANTLING DOMESTIC AND INTERNATIONAL CRIMINAL ENTERPRISES|RENEWING THE DEPARTMENT’S FOCUS ON VIOLENT CRIME|PRIORITIZING THE PROTECTION OF PUBLIC SAFETY|IMMEDIATE ACTIONS REGARDING ALASKA| ADMINISTRATION AND IMPROVED COMMODITIES AND DERIVATIVES MARKETS|NECESSARY BORDER AND IMMIGRATION STATUTORY, REGULATORY, AND ADMINISTRATIVE CHANGES|STATEMENT|PRIMARY RECOMMENDATION| AND RELATED AGENCIES|ANTI-MONEY LAUNDERING AND BENEFICIAL OWNERSHIP REPORTING REFORM|PUBLIC–PRIVATE PARTNERSHIPS|EMERGING TECHNOLOGIES|BUILD AMERICA BUREAU|PRIMARY RECOMMENDATION|PRIMARY RECOMMENDATION|STATEMENT|NECESSARY BORDER AND IMMIGRATION STATUTORY, REGULATORY, AND ADMINISTRATIVE CHANGES|PROGRAM AND OFFICE PRIORITIZATION WITHIN THE DEPARTMENT|OTHER STRUCTURAL REFORMS THAT THE | REQUIRES|NEW REGULATIONS|THAT THE PRESIDENT SHOULD ISSUE|PRO |EDUCATION AND VOCATIONAL TRAINING|RELIGION| AND RELATED AGENCIES|THE ECONOMY|^AGENCY$|AGENCY POLICIES THAT DON’T REQUIRE NEW LEGISLATION OR REGULATIONS TO ENACT|REFORM PILLARS|BIDEN ADMINISTRATION |OTHER REFORMS|BACKGROUND|MINIMUM EFFECTIVE REFORMS|MONETARY RULE REFORM OPTIONS|BROAD |FOR 2025 AND BEYOND|ANALYSIS AND|OVERVIEW|ENDNOTES|YES, TRADE DEFICITS MATTER|INDEX|OVERVIEW AND BACKGROUND|POLICY PRIORITIES|SOURCE|SOURCES|TABLE|AUTHOR’S|AUTHORS|NOTE|FIGURE|HTML|PLAW|CAA Section|CHART|MATH|READING|AVERAGE SCORES|FOURTH-GRADE|EIGHTH-GRADE|NEEDED REFORMS|RECOMMENDATIONS|MAJOR PRIORITY ISSUES AND SPECIFIC RECOMMENDATIONS|PERSONNEL|DEFUNDING THROUGH THE BUDGETARY PROCESS|PUBLIC INTEREST VS. PRIVILEGE|MISSION|KEY ISSUES|REGIONS|ORGANIZATIONAL ISSUES|NECESSARY REFORMS|ATTEMPTS AT REFORM|ADDITIONAL AREAS FOR REFORM|EXECUTIVE ORDER|DEFENSE-INDO-PACIFIC-STRATEGY-REPORT-2019.PDF|CONCLUSION|SHAPING THE FUTURE|HISTORY AND CONTEXT|POLITICAL LEADERSHIP AND BUREAUCRATIC LEADERSHIP AND SUPPORT|RIGHTING THE SHIP|PIVOTING ABROAD|OTHER INTERNATIONAL ENGAGEMENTS|SHAPING THE FUTURE|POLITICAL LEADERSHIP AND BUREAUCRATIC LEADERSHIP AND SUPPORT|AGENCY RELATIONSHIPS"
+
+# clean up text
+d %<>% mutate(text = text %>%
+    #remove extra white spac
+    str_squish() %>%
+    str_remove_all(remove) %>%
+  str_replace("ESA obligations", "Endangered Species Act obligations") %>%
+  str_replace("DEPARTMENT ORGANIZATION", "DEPARTMENT")
+)
+
+# identify section headers
+d %<>% mutate(section = str_extract(text, "^[A-Z][A-Z][A-Z][A-Z| |-|/|’|!|#|[0-9]|,|“|”]*") %>%
+                # clea up strings
+                str_squish() %>% str_remove("’$|,$| [A-Z]$") %>%
+                str_remove_all(remove) %>%
+                str_replace("DEPARTMENT OF DEFENSE|DOD .*|NUCLEAR DETERRENCE|MISSILE DEFENSE|SPECIAL OPERATIONS FORCES", "DOD") %>%
+                str_replace("SEC ADMINISTRATION", "SEC") %>%
+                str_replace(" COM$", " COMMISSION") %>%
+                str_replace("HEALTH RES AND SERVICES ADMINISTRATION" ,"HRSA") %>%
+                str_squish()
+)
+
+# drop headers shorter than 3 letters
+d %<>% mutate(section = ifelse(nchar(section) < 3, NA, section))
+
+
+# inspect section headers in order
+d$section %>% unique()
+
+# fill down
+d %<>% fill(section)
+
+head(d, 100)
+tail(d)
+
+###################
+# NOW THAT THE HEADERS ARE CLEANER, FIND RACIALIZED WORDS
+
+# make a regex OR statement
+terms <- paste(racialized_terms$racialized_terms, collapse  = "|")
+terms
+
+# count the number of times these appear
+d %<>% mutate(racialized_term_count = str_ext_all(text, terms) %>% lengths(),
+              racialized_terms = str_ext_all(text, terms) %>% paste(sep = ";") #FIXME
+              )
+
+d$racialized_term_count %>% lengths()
+
+d %>% filter(racialized_term_count > 2)
+
+# counts by section header
+d1 <- d %>% group_by(section) %>% summarise(n = sum(racialized_term_count))
+
+
+d1 %<>% arrange(-n)
+
+d1 %>% kablebox()
+
+d1 %<>% write_csv(here("data", "racialized_term_counts.csv"))
+
