@@ -1,25 +1,13 @@
 source("code/setup.r")
 
-# from google sheet via "get_keywords.R
+# get terms from google sheet via get_keywords.R
 racialized_terms <- read_csv(here("data", "racialized_terms.csv"))
 
-# read project 2025
-text <- here::here("data", "body.txt") %>%
-readLines()
 
-d <- tibble(text = text)
-
-d %<>% mutate(text = str_squish(text)) %>%
-           filter(nchar(text)>2)
-
-# save a smaller file
-save(d, file = here("data", "body.rda"))
-
-# load rda
+# load rda version of 2025 text from read_2025_txt.R
 load(here("data", "body.rda"))
 
 head(d)
-
 
 # identify departments and acronyms to help consolidate (TODO)
 departments <- d$text %>% str_extract("DEPARTMENT OF.*") %>% unique()
@@ -96,9 +84,15 @@ d %<>% mutate(racialized_term_count = str_ext_all(text, terms) %>% lengths(),
               racialized_terms = str_ext_all(text, terms) %>% paste(sep = ";") #FIXME
               )
 
-d$racialized_term_count %>% lengths()
+# take a look #FIXME radicalized_terms is not collapsing
+d %>% filter(racialized_term_count > 1) %>%
+  select(section, racialized_terms, text) %>%
+  kablebox()
 
-d %>% filter(racialized_term_count > 2)
+d %>% filter(racialized_term_count > 1) %>%
+  select(section, racialized_terms, text) %>%
+  write_csv(file = here("data", "racialized_terms_per_agency.csv"))
+
 
 # counts by section header
 d1 <- d %>% group_by(section) %>% summarise(n = sum(racialized_term_count))
