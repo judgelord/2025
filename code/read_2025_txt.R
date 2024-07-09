@@ -6,7 +6,9 @@ text <- here::here("data", "body.txt") %>%
 
 d <- tibble(text = text)
 
-d %<>% mutate(text = str_squish(text)) %>%
+d %<>% mutate(text = str_squish(text) %>%
+                # fix words broken over line breaks
+                str_replace_all("- |", "")) %>%
   filter(nchar(text)>2)
 
 # save a smaller file

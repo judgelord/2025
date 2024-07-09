@@ -1,7 +1,5 @@
 source("code/setup.r")
 
-# get terms from google sheet via get_keywords.R
-racialized_terms <- read_csv(here("data", "racialized_terms.csv"))
 
 
 # load rda version of 2025 text from read_2025_txt.R
@@ -10,10 +8,21 @@ load(here("data", "body.rda"))
 head(d)
 
 # identify departments and acronyms to help consolidate (TODO)
-departments <- d$text %>% str_extract("DEPARTMENT OF.*") %>% unique()
+departments <- d$text %>%
+  str_extract("DEPARTMENT OF.*") %>%
+  unique() %>%
+  na.omit() %>%
+  as.character() %>%
+  str_remove(" AND RELATED.*")
+
+departments <- departments[nchar(departments) > nchar("DEPARTMENT OF")]
+
 departments
 
-acronyms <- d$text %>% str_extract("\\([A-Z|-]*\\)") %>% unique() %>% na.omit() %>% as.character()
+acronyms <- d$text %>% str_extract("\\([A-Z][A-Z][A-Z|-]*\\)") %>% unique() %>% na.omit() %>% as.character()
+
+acronyms <- acronyms[nchar(acronyms) > 4] # FIXME This removes VA and OE and a few otheres that are real agencies
+
 acronyms
 
 # look at headers potentially related to agencies
@@ -72,35 +81,95 @@ d %<>% fill(section)
 head(d, 100)
 tail(d)
 
-###################
-# NOW THAT THE HEADERS ARE CLEANER, FIND RACIALIZED WORDS
 
-# make a regex OR statement
-terms <- paste(racialized_terms$racialized_terms, collapse  = "|")
-terms
+# extract department
+department_strings <- paste(departments, collapse = "|")
+department_strings
 
-# count the number of times these appear
-d %<>% mutate(racialized_term_count = str_ext_all(text, terms) %>% lengths(),
-              racialized_terms = str_ext_all(text, terms) %>% paste(sep = ";") #FIXME
-              )
+d %<>% group_by(text) %>%
+  # NOT CASE SENSITIVE!
+  mutate(department = str_ext_all(text, department_strings) )
 
-# take a look #FIXME racialized_terms is not collapsing
-d %>% filter(racialized_term_count > 1) %>%
-  select(section, racialized_terms, text) %>%
-  kablebox()
+d$department %<>% map(unique) %<>% map(str_to_upper)
 
-d %>% filter(racialized_term_count > 1) %>%
-  select(section, racialized_terms, text) %>%
-  write_csv(file = here("data", "racialized_terms_per_agency.csv"))
+# inspect
+keep(d$department, \(x) length(x) > 0)
 
-
-# counts by section header
-d1 <- d %>% group_by(section) %>% summarise(n = sum(racialized_term_count))
+# replace chr 0 with NA, paste lists together
+d %<>%
+  mutate(department = ifelse(
+    department == "character(0)", NA,
+    department # to keep as list
+    #str_c(department, collapse = ";", sep = ";") #  FIXME to collapse as string
+    )
+  )
 
 
-d1 %<>% arrange(-n)
 
-d1 %>% kablebox()
+d %<>% ungroup() %>% tidyr::fill(department)
 
-d1 %<>% write_csv(here("data", "racialized_term_counts.csv"))
+d$department
+
+
+###############################
+# extract acronyms
+
+#TODO INSPECT THESE
+acronyms[nchar(acronyms) < 6]
+
+# drop non-orgs
+acronyms <- acronyms[!str_detect(acronyms, "DEI|GHG|ESG|CRT|LNG")]
+
+# make regex
+acronym_strings <- paste(acronyms, collapse = "|") %>%
+  # add back in a few that were dropped
+  paste0("|(VA)|(OE)|(IA)") %>%
+  # drop non-entities
+  #str_remove_all("\\(EO\\)|\\(US\\)|\\(FY\\)|\\(DC\\)|\\(PC\\)|\\(DEI\\)|\\(IC)\\)|\\(OT\\)|\\(ER\\)|\\(FO\\)|\\(AI\\)|\\(MI\\)|\\(FE\\)|\\(NE\\)|\\(AE\\)|\\(SO\\)") %>%
+  str_remove_all("\\)|\\(")
+  # # alternative, escape parenthesis, if we want to keep only those acronyms that appear in parentheses
+  # str_replace_all("\\)", "\\\\)") %>%
+  # str_replace_all("\\(", "\\\\(")
+
+# check
+acronym_strings %>% str_dct("DEI")
+
+acronym_strings
+
+d %<>% group_by(text) %>%
+  # CASE SENSITIVE!
+  mutate(acronym = str_extract_all(text, acronym_strings) )
+
+d$acronym %<>% map(unique)
+
+# inspect
+keep(d$acronym, \(x) length(x) > 0)
+
+# replace chr 0 with NA, paste lists together
+d %<>%
+  mutate(acronym = ifelse(
+    acronym == "character(0)", NA,
+    acronym) # TO KEEP AS LIST
+    # str_c(acronym, collapse = ";", sep = ";") #  FIXME TO MAKE STRING
+  )
+
+d %>% drop_na(acronym) %>% pull(acronym)
+
+#FIXME not sure why this is happening, should be unique
+# d$acronym %<>% str_replace("OVP.;.OVP", "OVP")
+
+d %<>% ungroup() %>% tidyr::fill(acronym)
+
+d$acronym
+
+unique(d$acronym)
+
+
+
+
+# Save
+
+body_parsed <- d
+
+save(body_parsed, file = here("data", "body_parsed.rda"))
 
