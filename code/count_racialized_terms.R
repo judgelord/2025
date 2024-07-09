@@ -13,24 +13,24 @@ racialized_terms <- read_csv(here("data", "racialized_terms.csv"))
 
 
 # make a regex OR statement
-terms <- paste(racialized_terms$racialized_terms, collapse  = "|") %>%
-  str_replace("Black", "Black\b") %>%
-  str_replace("Illegal", "Illegal Immig") %>%
-  str_replace("DACA", "\bDACA\b")
+terms <- paste(racialized_terms$racialized_terms, collapse  = "\\b|\\b") %>%
+  str_replace("Illegal\\\\b", "Illegal Immig")
 terms
 
 # count the number of times these appear
 d %<>% mutate(racialized_term_count = str_ext_all(text, terms) %>% lengths(),
-              racialized_terms = str_ext_all(text, terms) %>% paste(sep = ";") #FIXME
+              racialized_terms = str_ext_all(text, terms) #%>% paste(sep = ";") #FIXME
 )
 
-# take a look #FIXME racialized_terms is not collapsing
-d %>% filter(racialized_term_count > 1) %>%
-  select(section, racialized_terms, text) %>%
-  kablebox()
+d$racialized_terms  %<>% map(str_to_lower) %>% map(unique)
 
-d %>% filter(racialized_term_count > 1) %>%
-  select(section, racialized_terms, text) %>%
+
+# take a look #FIXME racialized_terms is not collapsing
+d_select <- d %>% filter(racialized_term_count > 1) %>%
+  select(section, department, acronym, racialized_terms, text)
+
+d_select %>% kablebox()
+d_select %>%
   write_csv(file = here("data", "racialized_terms_per_agency.csv"))
 
 
