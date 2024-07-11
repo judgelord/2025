@@ -3,17 +3,23 @@ source("code/setup.r")
 
 
 # load rda version of 2025 text from read_2025_txt.R
-load(here("data", "body.rda"))
+load(here("data", "body_text_clean.rda"))
+
+agencies_by_section <- read_csv(here("data", "agencies_by_section.csv"))
+
+d <- body_text_clean
 
 head(d)
 
 # identify departments and acronyms to help consolidate (TODO)
 departments <- d$text %>%
-  str_extract("DEPARTMENT OF.*") %>%
+  str_extract_all("DEPARTMENT OF.*|.* DEPARTMENT") %>%
   unique() %>%
   na.omit() %>%
   as.character() %>%
-  str_remove(" AND RELATED.*")
+  str_remove("MISSION STATEMENT FOR A REFORMED|OTHER STRUCTURAL REFORMS THAT THE|RENEWING THE |BIDEN ADMINISTRATION| AND RELATED.*|.*WITHIN THE DEPARTMENT| AND RELATED AGENCIES") %>%
+  str_squish() %>%
+  unique()
 
 departments <- departments[nchar(departments) > nchar("DEPARTMENT OF")]
 
@@ -25,22 +31,6 @@ acronyms <- acronyms[nchar(acronyms) > 4] # FIXME This removes VA and OE and a f
 
 acronyms
 
-# look at headers potentially related to agencies
-d$text %>% str_extract("AGENCY.*") %>% unique()
-
-d$text %>% str_extract("[A-Z]* AND BUDGET") %>% unique()
-
-d$text %>% str_extract("OFFICE OF MANAGEMENT.*") %>% unique()
-
-d$text %>% str_extract("PRO .*") %>% unique()
-
-d$text %>% str_extract("PUBLIC.*") %>% unique()
-
-d$text %>% str_extract("ANTI.*") %>% unique()
-
-d$text %>% str_extract("PPO.*") %>% unique()
-
-d$text %>% str_extract(".*HAVA.*") %>% unique()
 
 # CLEAN UP TEXT
 # remove strings that look like section headers but are not
@@ -59,7 +49,7 @@ d %<>% mutate(text = text %>%
 # identify section headers
 d %<>% mutate(section = str_extract(text, "^[A-Z][A-Z][A-Z][A-Z| |-|/|’|!|#|[0-9]|,|“|”]*") %>%
                 # clea up strings
-                str_squish() %>% str_remove("’$|,$| [A-Z]$") %>%
+                str_squish() %>% str_remove("’$|,$| [A-Z]$|^ESG|^INTRODUCTION|^NATO") %>%
                 str_remove_all(remove) %>%
                 str_replace("DEPARTMENT OF DEFENSE|DOD .*|NUCLEAR DETERRENCE|MISSILE DEFENSE|SPECIAL OPERATIONS FORCES", "DOD") %>%
                 str_replace("SEC ADMINISTRATION", "SEC") %>%
@@ -82,33 +72,76 @@ head(d, 100)
 tail(d)
 
 
+
+
+###############################
+## merge in hand-coded department's and agencies
+d %<>% left_join(agencies_by_section)
+
+# inspect
+d |> drop_na(section) |> kablebox()
+
+
+
+###############################
 # extract department
 department_strings <- paste(departments, collapse = "|")
 department_strings
 
 d %<>% group_by(text) %>%
   # NOT CASE SENSITIVE!
-  mutate(department = str_ext_all(text, department_strings) )
+  mutate(departments_mentioned = str_ext_all(text, department_strings) )
 
-d$department %<>% map(unique) %<>% map(str_to_upper)
+d$departments_mentioned %<>% map(unique) %<>% map(str_to_upper)
 
 # inspect
-keep(d$department, \(x) length(x) > 0)
+keep(d$departments_mentioned, \(x) length(x) > 0)
 
 # replace chr 0 with NA, paste lists together
 d %<>%
-  mutate(department = ifelse(
-    department == "character(0)", NA,
-    department # to keep as list
+  mutate(departments_mentioned = ifelse(
+    departments_mentioned == "character(0)", NA,
+    departments_mentioned # to keep as list
     #str_c(department, collapse = ";", sep = ";") #  FIXME to collapse as string
     )
   )
 
 
 
-d %<>% ungroup() %>% tidyr::fill(department)
 
-d$department
+###############################
+# extract agency (From hand-coded list )
+agency_strings <- c(d$agency, d$subagency_acronym) %>%
+  unique()  %>%
+  paste(collapse = "\\b|\\b") %>%
+  str_remove("NA\\|")
+
+agency_strings
+
+
+d %<>% group_by(text) %>%
+  # NOT CASE SENSITIVE!
+  mutate(agencies_mentioned = str_extract_all(text, agency_strings) )
+
+d$agencies_mentioned %<>% map(unique)
+
+# inspect
+keep(d$agencies_mentioned, \(x) length(x) > 0)
+
+# replace chr 0 with NA, paste lists together
+d %<>%
+  mutate(agencies_mentioned = ifelse(
+    agencies_mentioned == "character(0)", NA,
+    agencies_mentioned # to keep as list
+    #str_c(department, collapse = ";", sep = ";") #  FIXME to collapse as string
+  )
+  )
+
+
+
+
+
+
 
 
 ###############################
@@ -120,51 +153,62 @@ acronyms[nchar(acronyms) < 6]
 # drop non-orgs
 acronyms <- acronyms[!str_detect(acronyms, "DEI|GHG|ESG|CRT|LNG")]
 
-# make regex
-acronym_strings <- paste(acronyms, collapse = "|") %>%
-  # add back in a few that were dropped
-  paste0("|(VA)|(OE)|(IA)") %>%
-  # drop non-entities
-  #str_remove_all("\\(EO\\)|\\(US\\)|\\(FY\\)|\\(DC\\)|\\(PC\\)|\\(DEI\\)|\\(IC)\\)|\\(OT\\)|\\(ER\\)|\\(FO\\)|\\(AI\\)|\\(MI\\)|\\(FE\\)|\\(NE\\)|\\(AE\\)|\\(SO\\)") %>%
-  str_remove_all("\\)|\\(")
-  # # alternative, escape parenthesis, if we want to keep only those acronyms that appear in parentheses
-  # str_replace_all("\\)", "\\\\)") %>%
-  # str_replace_all("\\(", "\\\\(")
+crosswalk <- tibble(
+  acronym = acronyms |> str_remove_all("\\)|\\("),
+  match = str_ext(acronyms, agency_strings)
+)
 
-# check
-acronym_strings %>% str_dct("DEI")
+# acronyms not covered in the hand-coded sheet
+crosswalk %>% filter(is.na(match)) %>% select(acronym) |>  kablebox()
+
+# make regex
+acronym_strings <- c(d$agency, # from hand-coded sheet
+                     acronyms, # extracted acronyms
+                     "VA", "OE", "IA" # add back in a few that were dropped
+                     ) %>%
+  str_remove_all("\\)|\\(") %>%
+  unique() %>%
+  paste(collapse = "\\b|\\b") %>%
+  str_remove("NA\\\\b\\|")
 
 acronym_strings
 
 d %<>% group_by(text) %>%
   # CASE SENSITIVE!
-  mutate(acronym = str_extract_all(text, acronym_strings) )
+  mutate(acronyms_mentioned = str_extract_all(text, acronym_strings) )
 
-d$acronym %<>% map(unique)
+d$acronyms_mentioned %<>% map(unique)
 
 # inspect
-keep(d$acronym, \(x) length(x) > 0)
+keep(d$acronyms_mentioned, \(x) length(x) > 0)
 
 # replace chr 0 with NA, paste lists together
 d %<>%
-  mutate(acronym = ifelse(
-    acronym == "character(0)", NA,
-    acronym) # TO KEEP AS LIST
+  mutate(acronyms_mentioned = ifelse(
+    acronyms_mentioned == "character(0)", NA,
+    acronyms_mentioned) # TO KEEP AS LIST
     # str_c(acronym, collapse = ";", sep = ";") #  FIXME TO MAKE STRING
   )
 
-d %>% drop_na(acronym) %>% pull(acronym)
+d %>% drop_na(acronyms_mentioned) %>% pull(acronyms_mentioned)
 
 #FIXME not sure why this is happening, should be unique
 # d$acronym %<>% str_replace("OVP.;.OVP", "OVP")
 
-d %<>% ungroup() %>% tidyr::fill(acronym)
+# d %<>% ungroup() %>% tidyr::fill(acronym)
 
-d$acronym
+d$acronyms_mentioned
 
-unique(d$acronym)
+unique(d$acronyms_mentioned)
 
 
+# for hand coding
+distinct(d, section, department, departments_mentioned, acronyms_mentioned) %>% kablebox
+
+
+# make lists chr vectors so they show up on github preview
+d %>% mutate_all(paste) %>%
+distinct(section, department, departments_mentioned, agencies_mentioned, acronyms_mentioned) %>% write_csv(here("data", "section-dept-alignment.csv"))
 
 
 # Save
