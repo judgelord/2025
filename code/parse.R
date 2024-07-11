@@ -111,10 +111,10 @@ d %<>%
 
 ###############################
 # extract agency (From hand-coded list )
-agency_strings <- c(d$agency, d$subagency_acronym) %>%
+agency_strings <- c(agencies_by_section$agency, agencies_by_section$subagency_acronym) %>%
   unique()  %>%
   paste(collapse = "\\b|\\b") %>%
-  str_remove("NA\\|")
+  str_remove("NA\\\\b\\|")
 
 agency_strings
 
@@ -123,7 +123,7 @@ d %<>% group_by(text) %>%
   # NOT CASE SENSITIVE!
   mutate(agencies_mentioned = str_extract_all(text, agency_strings) )
 
-d$agencies_mentioned %<>% map(unique)
+d$agencies_mentioned %<>% map(str_to_upper) %<>% map(unique)
 
 # inspect
 keep(d$agencies_mentioned, \(x) length(x) > 0)
@@ -162,7 +162,7 @@ crosswalk <- tibble(
 crosswalk %>% filter(is.na(match)) %>% select(acronym) |>  kablebox()
 
 # make regex
-acronym_strings <- c(d$agency, # from hand-coded sheet
+acronym_strings <- c(agencies_by_section$agency, # from hand-coded sheet
                      acronyms, # extracted acronyms
                      "VA", "OE", "IA" # add back in a few that were dropped
                      ) %>%
@@ -174,7 +174,7 @@ acronym_strings <- c(d$agency, # from hand-coded sheet
 acronym_strings
 
 d %<>% group_by(text) %>%
-  # CASE SENSITIVE!
+  #  CASE SENSITIVE!
   mutate(acronyms_mentioned = str_extract_all(text, acronym_strings) )
 
 d$acronyms_mentioned %<>% map(unique)
@@ -201,14 +201,22 @@ d$acronyms_mentioned
 
 unique(d$acronyms_mentioned)
 
+d %<>% ungroup()
 
 # for hand coding
-distinct(d, section, department, departments_mentioned, acronyms_mentioned) %>% kablebox
+d %>%
+  drop_na(section) %>%
+  mutate_all(paste) %>%
+  distinct(section, department, departments_mentioned, agencies_mentioned, acronyms_mentioned) %>%
+  kablebox
 
 
 # make lists chr vectors so they show up on github preview
-d %>% mutate_all(paste) %>%
-distinct(section, department, departments_mentioned, agencies_mentioned, acronyms_mentioned) %>% write_csv(here("data", "section-dept-alignment.csv"))
+d %>%
+  drop_na(section) %>%
+  mutate_all(paste) %>%
+  distinct(section, department, departments_mentioned, agencies_mentioned, acronyms_mentioned) %>%
+  write_csv(here("data", "section-dept-alignment.csv"))
 
 
 # Save
@@ -217,3 +225,6 @@ body_parsed <- d
 
 save(body_parsed, file = here("data", "body_parsed.rda"))
 
+
+# source scripts to update term counts
+source(here("code", "count_racialized_terms.R"))

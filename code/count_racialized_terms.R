@@ -47,33 +47,34 @@ d_section <- d %>%
   arrange(-n)
 d_section
 
-
+# counts by hand-coded department
 d_department <- d %>%
-  unnest(department) %>% #pull(acronym)
+  unnest(department) %>%
   group_by(department) %>%
   summarise(n = sum(racialized_term_count)) %>%
   arrange(-n)
 d_department %>% kablebox()
 
-
+# counts by hand-coded department
 d_agency <- d %>%
-  unnest(agency) %>% #pull(acronym)
+  unnest(agency) %>%
   group_by(agency) %>%
   summarise(n = sum(racialized_term_count)) %>%
   arrange(-n)
 d_agency %>% kablebox()
 
+# counts by agencies or department acronyms mentioned
 d_agencies_mentioned <- d %>%
-  unnest(agencies_mentioned) %>% #pull(acronym)
+  unnest(agencies_mentioned) %>%
   group_by(agencies_mentioned) %>%
   summarise(n = sum(racialized_term_count)) %>%
   arrange(-n)
 d_agencies_mentioned %>% kablebox()
 
-
+# counts by all acronyms mentioned
 d_acronym <- d %>%
-  unnest(acronyms_mentioned) %>% #pull(acronym)
-  group_by(acronym) %>%
+  unnest(acronyms_mentioned) %>%
+  group_by(acronyms_mentioned) %>%
   summarise(n = sum(racialized_term_count)) %>%
   arrange(-n)
 d_acronym %>% kablebox()
