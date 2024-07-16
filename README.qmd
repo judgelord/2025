@@ -28,7 +28,7 @@ A hand-coded crosswalk of the most relevant agency by section:
 ```{r}
 load(here::here("data", "agencies_by_section.rda"))
 
-agencies_by_section
+agencies_by_section |> head()
 ```
 
 The Project 2025 body text, parsed by section, merged with the crosswalk, and department, agency, and other acronyms extracted from the text:
