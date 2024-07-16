@@ -1,0 +1,46 @@
+---
+format: gfm
+execute:
+  warning: false
+---
+
+Please cite: 
+
+> Judge-Lord, Devin and Karla Magana. 2024. A Dataset for Text Analysis of Project 2025. https://github.com/judgelord/2025
+
+
+The raw Project 2025 body text (parsed by paragraph and cleaned up a bit): 
+
+- [data/body_text_clean.rda](data/body_text_clean.rda)
+
+```{r}
+load(here::here("data", "body_text_clean.rda"))
+
+body_text_clean$text[1:3]
+```
+
+
+A hand-coded crosswalk of the most relevant agency by section: 
+
+- [data/agencies_by_section.csv](data/agencies_by_section.csv)
+- [data/agencies_by_section.rda](data/agencies_by_section.rda)
+
+```{r}
+load(here::here("data", "agencies_by_section.rda"))
+
+agencies_by_section
+```
+
+The Project 2025 body text, parsed by section, merged with the crosswalk, and department, agency, and other acronyms extracted from the text:
+
+- [data/body_parsed.rda](data/body_parsed.rda)
+
+```{r}
+library(dplyr)
+
+load(here::here("data", "body_parsed.rda"))
+
+body_parsed[127,] |> mutate(across(everything(), as.character))
+```
+
+
