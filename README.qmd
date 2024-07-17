@@ -42,7 +42,7 @@ library(dplyr)
 
 load(here::here("data", "body_parsed.rda"))
 
-body_parsed[127:130,] |> mutate(across(everything(), as.character)) |> kable()
+body_parsed[127:128,] |> mutate(across(everything(), as.character)) |> kable()
 ```
 
 
