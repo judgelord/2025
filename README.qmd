@@ -14,9 +14,11 @@ The raw Project 2025 body text (parsed by paragraph and cleaned up a bit):
 - [data/body_text_clean.rda](data/body_text_clean.rda)
 
 ```{r}
+library(knitr)
+
 load(here::here("data", "body_text_clean.rda"))
 
-body_text_clean$text[1:3]
+body_text_clean |> head() |> kable()
 ```
 
 
@@ -28,7 +30,7 @@ A hand-coded crosswalk of the most relevant agency by section:
 ```{r}
 load(here::here("data", "agencies_by_section.rda"))
 
-agencies_by_section |> head()
+agencies_by_section |> head() |> kable()
 ```
 
 The Project 2025 body text, parsed by section, merged with the crosswalk, and department, agency, and other acronyms extracted from the text:
@@ -40,7 +42,7 @@ library(dplyr)
 
 load(here::here("data", "body_parsed.rda"))
 
-body_parsed[127,] |> mutate(across(everything(), as.character))
+body_parsed[127:130,] |> mutate(across(everything(), as.character)) |> kable()
 ```
 
 
