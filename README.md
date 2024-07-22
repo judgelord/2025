@@ -1,7 +1,7 @@
 
 
-![](docs/term_counts_files/figure-html/unnamed-chunk-1-1.png) more plots
-[here](https://judgelord.github.io/2025/term_counts)
+![](docs/term_counts_files/figure-html/woke-1.png) (more plots like this
+[here](https://judgelord.github.io/2025/term_counts))
 
 Please cite:
 
