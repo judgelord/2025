@@ -1,0 +1,79 @@
+---
+title: "Project 2025"
+format:
+# pdf: default
+ html:
+   toc: true
+   toc-location: left
+   theme: michigan.scss
+execute:
+  echo: false
+  engine: knitr
+  message: false
+  warning: false
+---
+
+We parsed the Project 2025 "Mandate for Leadership" text by section and paragraph. Linking each section to the federal department or agency it discussed. We also extracted acronyms so that we can see which agencies are mentioned in the same paragraphs as other key terms. 
+
+Below are counts of key terms per section: 
+
+# "Woke"
+
+```{r}
+#| echo: false
+#| fig-height: 3
+
+terms = c("woke")
+
+source(here::here("code", "count_terms.R"))
+
+d_department_plot
+#d_agency_plot
+d_subagency_name_plot
+#d_subagency_acronym_plot
+d_acronym_plot
+```
+
+# "Gender" 
+
+```{r}
+#| echo: false
+#| fig-height: 4
+
+terms = c("gender")
+
+source(here::here("code", "count_terms.R"))
+
+d_department_plot
+# d_agency_plot
+d_subagency_name_plot
+# d_subagency_acronym_plot
+d_acronym_plot
+```
+
+# Racialized language
+
+```{r, echo=FALSE}
+#| fig-height: 12
+#| echo: false
+#| 
+racialized_terms <- read_csv(here::here("data", "racialized_terms.csv"))
+
+terms <- racialized_terms$racialized_terms
+
+terms
+
+source(here::here("code", "count_terms.R"))
+
+d_department_plot
+#d_agency_plot
+d_subagency_name_plot
+```
+
+```{r}
+#| fig-height: 18
+#| echo: false
+
+#d_subagency_acronym_plot
+d_acronym_plot
+```
