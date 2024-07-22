@@ -1,5 +1,8 @@
 
 
+![](docs/term_counts_files/figure-html/unnamed-chunk-1-1.png) more plots
+[here](https://judgelord.github.io/2025/term_counts)
+
 Please cite:
 
 > Judge-Lord, Devin and Karla Magana. 2024. A Dataset for Text Analysis

@@ -6,6 +6,8 @@ format:
    toc: true
    toc-location: left
   # theme: michigan.scss
+   #self-contained: true # this makes it really big
+   #embed-resources: true
 execute:
   echo: false
   engine: knitr
@@ -23,6 +25,7 @@ Below are counts of key terms per section:
 
 ```{r}
 #| echo: false
+#| label: "woke"
 #| fig-height: 3
 
 terms = c("woke")
@@ -40,6 +43,7 @@ d_acronym_plot
 
 ```{r}
 #| echo: false
+#| label: "gender"
 #| fig-height: 4
 
 terms = c("gender")
@@ -57,8 +61,9 @@ d_acronym_plot
 
 ```{r, echo=FALSE}
 #| fig-height: 12
+#| label: "racial"
 #| echo: false
-#| 
+
 racialized_terms <- read_csv(here::here("data", "racialized_terms.csv"))
 
 terms <- racialized_terms$racialized_terms
@@ -75,6 +80,8 @@ d_subagency_name_plot
 ```{r}
 #| fig-height: 18
 #| echo: false
+#| label: "racial_acronyms"
+
 
 #d_subagency_acronym_plot
 d_acronym_plot
