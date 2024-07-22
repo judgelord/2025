@@ -5,7 +5,7 @@ format:
  html:
    toc: true
    toc-location: left
-   theme: michigan.scss
+  # theme: michigan.scss
 execute:
   echo: false
   engine: knitr
@@ -13,7 +13,9 @@ execute:
   warning: false
 ---
 
-We parsed the Project 2025 "Mandate for Leadership" text by section and paragraph. Linking each section to the federal department or agency it discussed. We also extracted acronyms so that we can see which agencies are mentioned in the same paragraphs as other key terms. 
+We parsed the Project 2025 "Mandate for Leadership" text by section and paragraph, linking each section to the federal department or agency it discussed. We also extracted acronyms from the text so that we can see which agencies are mentioned in the same paragraphs as other key terms. 
+
+The parsed document and code for text analysis in R is here: <https://github.com/judgelord/2025>
 
 Below are counts of key terms per section: 
 
